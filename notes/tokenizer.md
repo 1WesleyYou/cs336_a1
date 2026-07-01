@@ -48,3 +48,17 @@ BPE (Byte Pair Encoding) 是一种基于统计的 subword tokenization 方法, �
 
 比如有单词 `dog` 和 `dog!` 两个应该就是完全一个意思, 但是如果直接切割可能会认为这是两个意思, 但是实际上我们要合并起来认为它们是一个产物, 才能避免语义学习不对
 
+#### Pre-Tokenization 的目的
+
+所以它关心的是:
+
+- 哪些片段高频
+- 哪些合并可以减少序列长度
+- 哪些 token 能提高覆盖率, 减少 OOV
+
+它并不保证:
+
+- token 一定对应真正的 morpheme
+- token 一定对应正确单词边界
+- token 一定语义自然
+
