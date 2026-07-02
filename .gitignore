@@ -161,3 +161,6 @@ cython_debug/
 
 .ruff_cache/
 *.zip
+
+# Data (downloaded datasets — too big for git)
+data/
