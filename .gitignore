@@ -164,3 +164,7 @@ cython_debug/
 
 # Data (downloaded datasets — too big for git)
 data/
+
+# Exported / trained model artifacts (too big for git)
+export_tinystories/
+*.safetensors
