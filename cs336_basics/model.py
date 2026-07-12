@@ -321,32 +321,17 @@ class TransformerLM(nn.Module):
         super().__init__()
         d_k = d_model // num_heads
         rope = RoPE(d_k, rope_theta, context_length)  # one shared RoPE for all layers
-        #     self.token_embeddings = Embedding(vocab_size, d_model)
-        #     self.layers = nn.ModuleList(
-        #         [TransformerBlock(d_model, num_heads, d_ff, rope) for _ in range(num_layers)]
-        #     )
-        #     self.ln_final = RMSNorm(d_model)
-        #     self.lm_head  = Linear(d_model, vocab_size)
-        # ️ use nn.ModuleList (NOT a plain [ ]) so the blocks register as submodules
-        #    (same idea as nn.Parameter: a plain list is invisible to the model).
         self.token_embeddings = Embedding(vocab_size, d_model)  # return the corresponding token vector
-        self.layers = nn.ModuleList(
-                [TransformerBlock(d_model, num_heads, d_ff, rope) for _ in range(num_layers)]
-        )
+        self.layers = nn.ModuleList([TransformerBlock(d_model, num_heads, d_ff, rope) for _ in range(num_layers)])
         self.ln_final = RMSNorm(d_model)  # normed and then to pick from the vocab
         self.lm_head = Linear(d_model, vocab_size)  # pick from the vocab
 
-
     def forward(self, in_indices: torch.Tensor) -> torch.Tensor:
         # in_indices: (batch, seq) int token ids  →  logits (batch, seq, vocab_size)
-        #   1. x = self.token_embeddings(in_indices)       → (batch, seq, d_model)
-        #   2. for layer in self.layers: x = layer(x)      → run all blocks in order
-        #   3. x = self.ln_final(x)
-        #   4. return self.lm_head(x)                       → (batch, seq, vocab_size)
         x = self.token_embeddings(in_indices)
 
         for l in self.layers:
             x = l(x)
-            
+
         x = self.ln_final(x)
-        return self.lm_head(x)
+        return self.lm_head(x)  # only get the token choice in the end

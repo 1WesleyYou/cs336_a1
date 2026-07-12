@@ -1,5 +1,9 @@
 """Load the exported TinyStories model and generate text (autoregressive decoding).
 
+*** BASELINE ***  Naive static batching, NO KV cache: every decode step re-forwards the
+whole growing sequence (O(n^2) per step). Kept frozen as the reference to compare against.
+The profiled / KV-cache version lives in `generate_kv.py`.
+
 Export layout (symmetric to how it was saved during training):
     export_tinystories/config.json        # hyperparameters
     export_tinystories/model.safetensors  # TransformerLM.state_dict()
@@ -149,8 +153,8 @@ def generate_batch(model, tokenizer, prompts, cfg, max_new_tokens=200, temperatu
     # 5. decode each row up to its real length, drop a trailing EOS, return list[str]
     ans = []
     for b in range(B):
-        seq = x[b, : lengths[b] - 1].tolist()
-        if seq and seq[-1] == eos_id;
+        seq = x[b, : lengths[b]].tolist()
+        if seq and seq[-1] == eos_id:
             seq = seq[:-1]
         ans.append(tokenizer.decode(seq))
 
