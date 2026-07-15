@@ -58,7 +58,7 @@ def _softmax_kernel(S, P, M: int, N: int):
 
 
 @triton.jit
-def _flashattention_v1_kernel(A, B, C, M: int, N: int, K: int):
+def _flashattention_v1_kernel(A, B, C, m, l, M: int, N: int, K: int):
     # C = A @ B, use tiling
     # so each block kernel should handle 1 submatrix of C with shape [BLOCK_M, BLOCK_N]
     # A shape [M, K], B shape [K, N] -> C shape [M, N]
@@ -91,15 +91,21 @@ def _flashattention_v1_kernel(A, B, C, M: int, N: int, K: int):
         # --- Calcualte the local C tile:
         c_tile += tl.dot(a_tile, b_tile)
 
-    # # --- Store C tile to the global C tensor
-    # c_row = pidy * BLOCK_M + tl.arange(0, BLOCK_M)[:, None]
-    # c_col = pidx * BLOCK_N + tl.arange(0,BLOCK_N)[None, :]
-    # c_offsets = c_row * N + c_col
-    # c_mask = (c_row < M) & (c_col < N)
-
     # --- Calculate the local softmax tile:
     # 1. find the local maxima in c_tile in each row
-    tl.max(c_tile, )
+    m_tile = tl.max(c_tile, axis=-1, keepdim=True)
+    # 2. max trick: subtract the local maxima from c_tile, then take exp and sum along the row
+    # This is the denominatoor of the softmax function (1st run only)
+    l_tile = tl.sum(tl.exp(c_tile - m_tile), axis=-1, keepdim=True)
+    out_tile = tl.exp(c_tile - m_tile) / l_tile
+
+    # --- Store the out tile
+    out_row = pidy * BLOCK_M + tl.arange(0, BLOCK_M)[:, None]
+    out_col = pidx * BLOCK_N + tl.arange(0,BLOCK_N)[None, :]
+    out_offsets = out_row * N + out_col
+    out_mask = (out_row < M) & (out_col < N)
+    tl.store(C + out_offsets, out_tile, mask=out_mask)
+
 
 # Q, K, V, output are tensors on the GPU
 def solve(
